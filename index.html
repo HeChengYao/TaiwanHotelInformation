@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣旅館民宿資訊</title>
+    <link href="CSS/bootstrap.min.css" rel="stylesheet">
+    <link href="CSS/animate.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .banner {
+            background-size: cover;
+            background-position: center;
+            height: 300px;
+        }
+
+        .search-container {
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: -50px;
+        }
+
+        .card {
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+
+<body>
+    <section>
+        <div class="banner bg-cover"
+            style="background-image: url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1500&q=80');">
+        </div>
+    </section>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 search-container shadow">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <select class="form-select" id="citySelect">
+                            <option value="" selected disabled>請選擇縣市</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <select class="form-select" id="townSelect">
+                            <option value="" selected disabled>請選擇鄉鎮區</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-5">
+        <div class="row" id="mylist"></div>
+    </div>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script>
+        var allData; //台中市景點所有的資料
+        var cityCounty; //全國縣市相關資料
+        var cityselected; //已選取的縣市名稱
+        var townselected; //已選取的鄉鎮區名稱
+        $(function () {
+            //串接全國旅館資料 opendata
+            $.ajax({
+                type: "GET",
+                url: "json/hotel_C_f.json",
+                //dataType: "json",
+                async: false,
+                success: function (data) {
+                    allData = data.XML_Head.Infos.Info;
+                },
+                error: function () {
+                    alert("error - jsonjs/hotel_C_f.json");
+                }
+            });
+
+            //串接全國縣市資料 opendata
+            $.ajax({
+                type: "GET",
+                url: "/json/CityCountyData.json",
+                async: false,
+                dataType: "json",
+                success: function (data) {
+                    cityCounty = data;
+                }
+            });
+
+            //產生縣市SELECT選單
+            $("#citySelect").empty();
+            $("#citySelect").append('<option value="" selected disabled>--請選擇縣市名稱--</option>');
+            cityCounty.forEach(function (item) {
+                var strHTML = '<option value="' + item.CityName + '">' + item.CityName + '</option>';
+                $("#citySelect").append(strHTML);
+            });
+
+            //監聽縣市SELECT選單 ==> 產生鄉鎮區選單
+            $("#citySelect").change(function () {
+                console.log($(this).val());
+                cityselected = $(this).val();
+                console.log(cityselected);
+
+                cityCounty.forEach(function (item) {
+                    if (item.CityName == cityselected) {
+                        console.log(item);
+
+                        //產生鄉鎮區選單
+                        $("#townSelect").empty();
+                        $("#townSelect").append('<option value="" selected disabled>--請選擇鄉鎮區名稱--</option>');
+                        item.AreaList.forEach(function (town) {
+                            console.log(town.AreaName);
+
+                            var strHTML = '<option value="' + town.AreaName + '">' + town.AreaName + '</option>';
+                            $("#townSelect").append(strHTML);
+                        });
+                    }
+                });
+            });
+
+
+            // 修改卡片生成邏輯
+            $("#townSelect").change(function () {
+                console.log($(this).val());
+                townselected = $(this).val();
+                console.log(townselected);
+
+                $("#mylist").empty();
+                allData.forEach(function (item) {
+                    if (item.Region == cityselected && item.Town == townselected) {
+                        console.log(item);
+                        var pic = item.Picture1 || 'https://fakeimg.pl/300x200/200';
+                        var strHTML = `
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100 shadow">
+                                    <img src="${pic}" class="card-img-top" alt="${item.Name}" style="height: 200px; object-fit: cover;">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${item.Name}</h5>
+                                        <p class="card-text"><i class="fas fa-map-marker-alt"></i> ${item.Add}</p>
+                                        <p class="card-text"><i class="fas fa-phone"></i> ${item.Tel}</p>
+                                        <p class="card-text"><i class="fas fa-car"></i> ${item.Parkinginfo}</p>
+                                        <p class="card-text">${item.Description.substring(0, 50)}...</p>
+                                        <button class="btn btn-primary mt-2" onclick="openWebsite('${item.Website}')">查看網站</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        $("#mylist").append(strHTML);
+                    }
+                });
+            });
+        });
+
+        function openWebsite(url) {
+            if (url && url.trim() !== "") {
+                window.open(url, '_blank');
+            } else {
+                alert('抱歉，此旅館/民宿未提供網站連結。');
+            }
+        }
+    </script>
+</body>
+
+</html>
